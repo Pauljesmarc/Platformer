@@ -16,6 +16,7 @@ import javafx.stage.Stage;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Random;
 
 public class MainApp extends Application implements Runnable{
 
@@ -57,7 +58,7 @@ public class MainApp extends Application implements Runnable{
         Image bgk = new Image("Picasso-Room.jpg");
         ImageView bg = new ImageView(bgk);
         int n = LevelData.LEVEL_ONE.length * 60;
-        System.out.println(n);
+
         bg.setFitHeight(LevelData.LEVEL_ONE.length*60);
         bg.setFitWidth(1280);
 
@@ -224,14 +225,12 @@ public class MainApp extends Application implements Runnable{
         }
 
     }
-
     private void jumpplayer(){
         if(canjump){
             playervelocity = playervelocity.add(0,-30);
             canjump = false;
         }
     }
-
     private boolean ispressed(KeyCode key){
         return keys.getOrDefault(key,false);
     }
@@ -271,6 +270,7 @@ public class MainApp extends Application implements Runnable{
                 if(running){
                     update();
                 }
+
                 if(dialogEvent){
                     dialogEvent = false;
                     keys.keySet().forEach(key -> keys.put(key,false));
@@ -283,9 +283,10 @@ public class MainApp extends Application implements Runnable{
                         }
                         running = true;
                     });
+
+
                     dialog.open();
                 }
-
             }
         };
         timer.start();
