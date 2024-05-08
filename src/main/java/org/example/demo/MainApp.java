@@ -1,10 +1,7 @@
 package org.example.demo;
 
 import javafx.animation.AnimationTimer;
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
 import javafx.application.Application;
-import javafx.fxml.FXMLLoader;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -12,47 +9,75 @@ import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
-import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
-import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
-import javafx.util.Duration;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 
-public class MainApp extends Application {
-
+public class MainApp extends Application implements Runnable{
 
     private HashMap<KeyCode, Boolean>keys = new HashMap<>();
     private ArrayList<Node> platfomrs = new ArrayList<>();
     private ArrayList<Node> coins = new ArrayList<>();
     private ArrayList<Node> hints = new ArrayList<>();
 
-
+    //appRoot = main game window
     private Pane appRoot = new Pane();
+    //gameRoot = game scene
     private Pane gameRoot = new Pane();
     private Pane uiRoot = new Pane();
 
+    private GameDialog dialog = new GameDialog();
 
-    private Node player;
+    public static int hintPoints=0;
+    public static int score =0;
+
+    public static Label hintPointsTxt = new Label();
+    public static Label scoreTxt =  new Label();
+
+
+    private Node player = new Player(30,600,40,40,Color.BLUE).getEntityAsNode();
+
     private Point2D playervelocity = new Point2D(0,0);
     private boolean canjump = true;
 
     private int levelwidht;
 
     private boolean dialogEvent = false;
-    private static boolean runniing = true;
+    private static boolean running = true;
+    private Node tile;
+
+
+    private Thread gameThread = new Thread(this);
 
     private void initcontent(){
-        Rectangle bg = new Rectangle(1280,720);
+        Image bgk = new Image("Picasso-Room.jpg");
+        ImageView bg = new ImageView(bgk);
+        int n = LevelData.LEVEL_ONE.length * 60;
+        System.out.println(n);
+        bg.setFitHeight(LevelData.LEVEL_ONE.length*60);
+        bg.setFitWidth(1280);
+
+        hintPointsTxt.setText(String.valueOf(hintPoints));
+        hintPointsTxt.setPrefHeight(hintPointsTxt.getFont().getSize());
+        hintPointsTxt.setPrefWidth(hintPointsTxt.getFont().getSize());
+        hintPointsTxt.setTextFill(Color.GREEN);
+        hintPointsTxt.setLayoutX(30);
+        hintPointsTxt.setLayoutY(30);
+
+        scoreTxt.setText(String.valueOf(score));
+        scoreTxt.setPrefHeight(scoreTxt.getFont().getSize());
+        scoreTxt.setPrefWidth(scoreTxt.getFont().getSize());
+        scoreTxt.setTextFill(Color.GREEN);
+        scoreTxt.setLayoutX(30);
+        scoreTxt.setLayoutY(60);
 
         levelwidht  = LevelData.LEVEL_ONE[0].length() * 60;
 
+        //adding tiles platform
         for (int i = 0; i < LevelData.LEVEL_ONE.length; i++) {
             String line = LevelData.LEVEL_ONE[i];
             for (int j = 0; j < line.length(); j++) {
@@ -60,22 +85,30 @@ public class MainApp extends Application {
                     case '0':
                         break;
                     case '1':
-                        Node platform = createentity(j*60,i*60,60,60,Color.BROWN);
-                        platfomrs.add(platform);
+
+                        tile = new Tiles(j*60,i*60,60,60,Color.BROWN).getEntityAsNode();
+                        platfomrs.add(tile);
+                        gameRoot.getChildren().add(tile);
                         break;
                     case '2':
-                        Node coin = createentity(j*60,i*60,60,60,Color.GOLD);
-                        coins.add(coin);
+
+                        tile = new Tiles(j*60,i*60,60,60,Color.GOLD).getEntityAsNode();
+                        coins.add(tile);
+                        gameRoot.getChildren().add(tile);
                         break;
                     case '3':
-                        Node hint = createentity(j*60,i*60,60,60,Color.GREEN);
-                        hints.add(hint);
+
+                        tile = new Tiles(j*60,i*60,60,60,Color.GREEN).getEntityAsNode();
+                        hints.add(tile);
+                        gameRoot.getChildren().add(tile);
+                        break;
                 }
             }
         }
+        //adding player entity
+        gameRoot.getChildren().addAll(player);
 
-        player = createentity(0,600,40,40,Color.BLUE);
-
+        //for moving map
         player.translateXProperty().addListener((obs,old,newvalue)-> {
             int offset = newvalue.intValue();
             if(offset > 640 && offset < levelwidht - 640){
@@ -83,11 +116,12 @@ public class MainApp extends Application {
             }
         });
 
-
-        appRoot.getChildren().addAll(bg,gameRoot,uiRoot);
+        //adding all Node to main game window
+        appRoot.getChildren().addAll(bg,gameRoot,uiRoot,scoreTxt,hintPointsTxt);
     }
     private void update(){
         if(ispressed(KeyCode.W) && player.getTranslateY()>=5){
+
             jumpplayer();
         }
         if(ispressed(KeyCode.A) && player.getTranslateX() >=5){
@@ -104,13 +138,37 @@ public class MainApp extends Application {
 
         for(Node coin : coins){
             if(player.getBoundsInParent().intersects(coin.getBoundsInParent())){
-                coin.getProperties().put("alive",false);
-                dialogEvent = true;
-                runniing = false;
+                if(ispressed(KeyCode.E)){
+                    dialogEvent = true;
+                    if(dialog.isCorrect()){
+                        gameRoot.getChildren().remove(coin);
+                        coin.getProperties().put("alive",false);
+                    }
+                    running = false;
+                }
+
             }
         }
 
         for(Iterator<Node> it = coins.iterator(); it.hasNext();){
+            Node coin = it.next();
+            if(dialog.isCorrect()) {
+                if (!(Boolean) coin.getProperties().get("alive")) {
+                    it.remove();
+                    gameRoot.getChildren().remove(coin);
+                }
+            }
+        }
+
+        for(Node hint : hints){
+            if(player.getBoundsInParent().intersects(hint.getBoundsInParent())){
+                hint.getProperties().put("alive",false);
+                hintPoints++;
+                hintPointsTxt.setText(String.valueOf(hintPoints));
+            }
+        }
+
+        for(Iterator<Node> it = hints.iterator(); it.hasNext();){
             Node coin = it.next();
             if(!(Boolean)coin.getProperties().get("alive")){
                 it.remove();
@@ -118,7 +176,9 @@ public class MainApp extends Application {
             }
         }
 
+
     }
+
     private void movePlayerX(int value){
         boolean movingright = value>0;
 
@@ -172,44 +232,48 @@ public class MainApp extends Application {
         }
     }
 
-    private Node createentity(int x, int y, int w,int h,Color color){
-
-        Rectangle entity = new Rectangle(w,h);
-        entity.setTranslateX(x);
-        entity.setTranslateY(y);
-        entity.setFill(color);
-        entity.getProperties().put("alive",true);
-
-        gameRoot.getChildren().add(entity);
-        return entity;
-    }
     private boolean ispressed(KeyCode key){
         return keys.getOrDefault(key,false);
-
     }
 
     @Override
     public void start(Stage stage) throws Exception {
+
         initcontent();
 
         Scene scene = new Scene(appRoot);
         scene.setOnKeyPressed(event -> keys.put(event.getCode(),true));
         scene.setOnKeyReleased(event -> keys.put(event.getCode(),false));
-        stage.setTitle("QuizRun");
         stage.setScene(scene);
         stage.show();
+        gameThread.start();
+
+
+    }
+
+    public static void main(String[] args) {
+        launch();
+    }
+
+    public static void setRunning(boolean running) {
+        MainApp.running = running;
+    }
+
+
+    @Override
+    public void run() {
+
+        //makes the game responsive
 
         AnimationTimer timer = new AnimationTimer() {
             @Override
             public void handle(long l) {
-                if(runniing){
+                if(running){
                     update();
                 }
                 if(dialogEvent){
                     dialogEvent = false;
                     keys.keySet().forEach(key -> keys.put(key,false));
-
-                    GameDialog dialog = new GameDialog();
 
                     dialog.setOnCloseRequest(event->{
                         if(dialog.isCorrect()){
@@ -217,21 +281,13 @@ public class MainApp extends Application {
                         }else {
                             System.out.println("wrong");
                         }
-                        runniing = true;
+                        running = true;
                     });
                     dialog.open();
                 }
+
             }
         };
         timer.start();
-    }
-
-    public static void main(String[] args) {
-
-        launch();
-    }
-
-    public static void setRunniing(boolean runniing) {
-        MainApp.runniing = runniing;
     }
 }

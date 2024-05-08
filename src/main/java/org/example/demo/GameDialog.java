@@ -1,6 +1,5 @@
 package org.example.demo;
 
-import com.sun.tools.javac.Main;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -25,12 +24,20 @@ public class GameDialog extends Stage {
         Button btnsubmit = new Button("Submit");
 
         btnsubmit.setOnAction(event -> {
-            fieldAnswer.setEditable(false);
-            textActualAnswer.setVisible(true);
+            //fieldAnswer.setEditable(false);
+
             correct = textActualAnswer.getText().equals(fieldAnswer.getText());
             if(correct){
+                MainApp.scoreTxt.setText(String.valueOf(MainApp.score+=1));
+                textActualAnswer.setVisible(true);
+                System.out.println(MainApp.score);
                 this.close();
-                MainApp.setRunniing(true);
+                MainApp.setRunning(true);
+            }else {
+                textActualAnswer.setText("Wrong");
+                textActualAnswer.setVisible(true);
+                fieldAnswer.setEditable(true);
+                MainApp.setRunning(true);
             }
 
         });
