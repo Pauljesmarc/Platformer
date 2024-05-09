@@ -122,7 +122,6 @@ public class MainApp extends Application implements Runnable{
     }
     private void update(){
         if(ispressed(KeyCode.W) && player.getTranslateY()>=5){
-
             jumpplayer();
         }
         if(ispressed(KeyCode.A) && player.getTranslateX() >=5){
@@ -135,21 +134,25 @@ public class MainApp extends Application implements Runnable{
             playervelocity = playervelocity.add(0,1);
 
         }
+
         movePlayerY((int)playervelocity.getY());
 
         for(Node coin : coins){
             if(player.getBoundsInParent().intersects(coin.getBoundsInParent())){
                 if(ispressed(KeyCode.E)){
-                    dialogEvent = true;
-                    if(dialog.isCorrect()){
-                        gameRoot.getChildren().remove(coin);
-                        coin.getProperties().put("alive",false);
+                    if((boolean) coin.getProperties().get("alive")) {
+                        dialogEvent = true;
+                        running = false;
                     }
-                    running = false;
+                }
+                if(dialog.isCorrect()){
+                    gameRoot.getChildren().remove(coin);
+                    coin.getProperties().put("alive",false);
                 }
 
             }
         }
+        dialog.setCorrect(false);
 
         for(Iterator<Node> it = coins.iterator(); it.hasNext();){
             Node coin = it.next();
@@ -270,7 +273,6 @@ public class MainApp extends Application implements Runnable{
                 if(running){
                     update();
                 }
-
                 if(dialogEvent){
                     dialogEvent = false;
                     keys.keySet().forEach(key -> keys.put(key,false));
@@ -283,8 +285,6 @@ public class MainApp extends Application implements Runnable{
                         }
                         running = true;
                     });
-
-
                     dialog.open();
                 }
             }
