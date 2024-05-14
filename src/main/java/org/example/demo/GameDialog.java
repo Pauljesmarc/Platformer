@@ -49,11 +49,21 @@ public class GameDialog extends Stage {
             }
         });
         btnhint.setOnAction(event -> {
-            for(Object[] question : questions) {
-                if(question[3].equals(randomNumber)){
-                    hintBox.setText((String) question[2]);
+
+            int hintPoints = MainApp.hintPoints;
+            System.out.println(hintPoints);
+
+            if(hintPoints>=2){
+                for(Object[] question : questions) {
+                    if(question[2].equals(randomNumber)){
+                        hintBox.setText((String) question[2]);
+                    }
                 }
+                MainApp.hintPoints--;
+            }else{
+                hintBox.setText("Low on Hint Points");
             }
+
             hintBox.setVisible(true);
         });
 
@@ -102,7 +112,6 @@ public class GameDialog extends Stage {
             }
         }
 
-
         fieldAnswer.setText("");
         fieldAnswer.setEditable(true);
         answerBox.setVisible(false);
@@ -120,6 +129,5 @@ public class GameDialog extends Stage {
     public void setCorrect(boolean correct) {
         this.correct = correct;
     }
-
 
 }

@@ -16,13 +16,12 @@ import javafx.stage.Stage;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Random;
 
 public class MainApp extends Application implements Runnable{
 
     private HashMap<KeyCode, Boolean>keys = new HashMap<>();
     private ArrayList<Node> platfomrs = new ArrayList<>();
-    private ArrayList<Node> coins = new ArrayList<>();
+    private ArrayList<Node> mysteryQ = new ArrayList<>();
     private ArrayList<Node> hints = new ArrayList<>();
 
     //appRoot = main game window
@@ -39,9 +38,7 @@ public class MainApp extends Application implements Runnable{
     public static Label hintPointsTxt = new Label();
     public static Label scoreTxt =  new Label();
 
-
-    private Node player = new Player(30,600,40,40,Color.BLUE).getEntityAsNode();
-
+    private Player player = new Player(30,600,40,40);
     private Point2D playervelocity = new Point2D(0,0);
     private boolean canjump = true;
 
@@ -49,7 +46,7 @@ public class MainApp extends Application implements Runnable{
 
     private boolean dialogEvent = false;
     private static boolean running = true;
-    private Node tile;
+    private Tiles tile;
 
 
     private Thread gameThread = new Thread(this);
@@ -57,7 +54,6 @@ public class MainApp extends Application implements Runnable{
     private void initcontent(){
         Image bgk = new Image("Picasso-Room.jpg");
         ImageView bg = new ImageView(bgk);
-        int n = LevelData.LEVEL_ONE.length * 60;
 
         bg.setFitHeight(LevelData.LEVEL_ONE.length*60);
         bg.setFitWidth(1280);
@@ -87,30 +83,36 @@ public class MainApp extends Application implements Runnable{
                         break;
                     case '1':
 
-                        tile = new Tiles(j*60,i*60,60,60,Color.BROWN).getEntityAsNode();
-                        platfomrs.add(tile);
-                        gameRoot.getChildren().add(tile);
+                        tile = new Tiles(j*60,i*60,60,60,1);
+                        platfomrs.add(tile.getHitBox());
+                        gameRoot.getChildren().addAll(tile.getHitBox(),tile.getImageView());
                         break;
                     case '2':
 
-                        tile = new Tiles(j*60,i*60,60,60,Color.GOLD).getEntityAsNode();
-                        coins.add(tile);
-                        gameRoot.getChildren().add(tile);
+                        tile = new Tiles(j*60,i*60,60,60,2);
+
+                        mysteryQ.add(tile.getHitBox());
+                        mysteryQ.add(tile.getImageView());
+
+                        gameRoot.getChildren().addAll(tile.getHitBox(),tile.getImageView());
                         break;
                     case '3':
 
-                        tile = new Tiles(j*60,i*60,60,60,Color.GREEN).getEntityAsNode();
-                        hints.add(tile);
-                        gameRoot.getChildren().add(tile);
+                        tile = new Tiles(j*60,i*60,60,60,3);
+
+                        hints.add(tile.getHitBox());
+                        hints.add(tile.getImageView());
+                        gameRoot.getChildren().addAll(tile.getHitBox(),tile.getImageView());
                         break;
                 }
             }
         }
+
         //adding player entity
-        gameRoot.getChildren().addAll(player);
+        gameRoot.getChildren().addAll(player.getHitBox(),player.getImage());
 
         //for moving map
-        player.translateXProperty().addListener((obs,old,newvalue)-> {
+        player.getHitBox().translateXProperty().addListener((obs,old,newvalue)-> {
             int offset = newvalue.intValue();
             if(offset > 640 && offset < levelwidht - 640){
                 gameRoot.setLayoutX(-(offset - 640));
@@ -121,13 +123,14 @@ public class MainApp extends Application implements Runnable{
         appRoot.getChildren().addAll(bg,gameRoot,uiRoot,scoreTxt,hintPointsTxt);
     }
     private void update(){
-        if(ispressed(KeyCode.W) && player.getTranslateY()>=5){
+        if(ispressed(KeyCode.W) && player.getHitBox().getTranslateY()>=5){
+
             jumpplayer();
         }
-        if(ispressed(KeyCode.A) && player.getTranslateX() >=5){
+        if(ispressed(KeyCode.A) && player.getHitBox().getTranslateX() >=5){
             movePlayerX(-5);
         }
-        if(ispressed(KeyCode.D) && player.getTranslateX() +40  <= levelwidht-5){
+        if(ispressed(KeyCode.D) && player.getHitBox().getTranslateX() +40  <= levelwidht-5){
             movePlayerX(5);
         }
         if(playervelocity.getY()<10){
@@ -137,8 +140,8 @@ public class MainApp extends Application implements Runnable{
 
         movePlayerY((int)playervelocity.getY());
 
-        for(Node coin : coins){
-            if(player.getBoundsInParent().intersects(coin.getBoundsInParent())){
+        for(Node coin : mysteryQ){
+            if(player.getHitBox().getBoundsInParent().intersects(coin.getBoundsInParent())){
                 if(ispressed(KeyCode.E)){
                     if((boolean) coin.getProperties().get("alive")) {
                         dialogEvent = true;
@@ -147,14 +150,17 @@ public class MainApp extends Application implements Runnable{
                 }
                 if(dialog.isCorrect()){
                     gameRoot.getChildren().remove(coin);
+                    gameRoot.getChildren().remove(tile.getImageView());
                     coin.getProperties().put("alive",false);
+
+
                 }
 
             }
         }
         dialog.setCorrect(false);
 
-        for(Iterator<Node> it = coins.iterator(); it.hasNext();){
+        for(Iterator<Node> it = mysteryQ.iterator(); it.hasNext();){
             Node coin = it.next();
             if(dialog.isCorrect()) {
                 if (!(Boolean) coin.getProperties().get("alive")) {
@@ -165,7 +171,7 @@ public class MainApp extends Application implements Runnable{
         }
 
         for(Node hint : hints){
-            if(player.getBoundsInParent().intersects(hint.getBoundsInParent())){
+            if(player.getHitBox().getBoundsInParent().intersects(hint.getBoundsInParent())){
                 hint.getProperties().put("alive",false);
                 hintPoints++;
                 hintPointsTxt.setText(String.valueOf(hintPoints));
@@ -179,54 +185,56 @@ public class MainApp extends Application implements Runnable{
                 gameRoot.getChildren().remove(coin);
             }
         }
-
-
     }
 
     private void movePlayerX(int value){
         boolean movingright = value>0;
-
         for (int i = 0; i < Math.abs(value); i++) {
             for (Node platform : platfomrs) {
-                if(player.getBoundsInParent().intersects(platform.getBoundsInParent())){
+                if(player.getHitBox().getBoundsInParent().intersects(platform.getBoundsInParent())){
+
                     if(movingright){
-                        if(player.getTranslateX()+40 == platform.getTranslateX()){
+                        if(player.getHitBox().getTranslateX()+40 == platform.getTranslateX()){
                             return;
                         }
                     }
                     else {
-                        if(player.getTranslateX() == platform.getTranslateX() + 60){
+                        if(player.getHitBox().getTranslateX() == platform.getTranslateX() + 60){
                             return;
                         }
                     }
                 }
             }
-            player.setTranslateX(player.getTranslateX() + (movingright ? 1: -1));
+            player.getHitBox().setTranslateX(player.getHitBox().getTranslateX() + (movingright ? 1: -1));
+            player.getImage().setTranslateX(player.getImage().getTranslateX() + (movingright ? 1: -1));
         }
     }
+
+
     private void movePlayerY(int value){
         boolean movingdown = value>0;
 
         for (int i = 0; i < Math.abs(value); i++) {
             for (Node platform : platfomrs) {
-                if(player.getBoundsInParent().intersects(platform.getBoundsInParent())){
+                if(player.getHitBox().getBoundsInParent().intersects(platform.getBoundsInParent())){
                     if(movingdown){
-                        if(player.getTranslateY()+40 == platform.getTranslateY()){
-                            player.setTranslateY(player.getTranslateY() - 1);
+                        if(player.getHitBox().getTranslateY()+40 == platform.getTranslateY()){
+                            player.getHitBox().setTranslateY(player.getHitBox().getTranslateY() - 1);
+                            player.getImage().setTranslateY(player.getImage().getTranslateY() - 1);
                             canjump = true;
                             return;
                         }
                     }
                     else {
-                        if(player.getTranslateY() == platform.getTranslateY() + 60){
+                        if(player.getHitBox().getTranslateY() == platform.getTranslateY() + 60){
                             return;
                         }
                     }
                 }
             }
-            player.setTranslateY(player.getTranslateY() + (movingdown ? 1: -1));
+            player.getHitBox().setTranslateY(player.getHitBox().getTranslateY() + (movingdown ? 1: -1));
+            player.getImage().setTranslateY(player.getImage().getTranslateY() + (movingdown ? 1: -1));
         }
-
     }
     private void jumpplayer(){
         if(canjump){
